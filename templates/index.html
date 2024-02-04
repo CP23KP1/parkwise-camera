@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Selector</title>
+</head>
+<body>
+    <h1>Camera Selector</h1>
+
+    <label for="selected_camera">Select Camera:</label>
+    <select id="selected_camera" name="selected_camera">
+        {% for option in options %}
+            <option value="{{ option }}" {% if option == selected_variable %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+    </select>
+
+    <button onclick="updateCamera()">Update Camera</button>
+
+    <canvas id="video_stream_canvas" style="width: 640px; height: 480px;"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        var canvas = document.getElementById('video_stream_canvas');
+        var ctx = canvas.getContext('2d');
+
+        function updateCamera() {
+            var selectedCamera = document.getElementById('selected_camera').value;
+
+            fetch('/update_camera', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'selected_camera=' + selectedCamera,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Camera updated successfully');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating camera:', error);
+            });
+        }
+
+        socket.on('video_stream', function(data) {
+            var img = new Image();
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = 'data:image/jpeg;base64,' + data.image;
+        });
+    </script>
+</body>
+</html>
