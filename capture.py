@@ -18,7 +18,6 @@ from kivy.lang import Builder
 from kivy.core.text import LabelBase
 from kivy.animation import Animation
 from kivy.uix.image import Image
-# Register a custom font
 
 Builder.load_string('''
 <Button>:
@@ -43,7 +42,7 @@ Builder.load_string('''
             size: self.size
 
     Image:
-        source: './kmutt.png'  # Path of logo
+        source: './parkwise_logo.png'  # Path of logo
         # size_hint_y: None
         height: 600
         width: 400
@@ -55,9 +54,9 @@ load_dotenv()
 
 selected_variable = 2
 
-
 class CameraSelectorApp(App):
     def build(self):
+        
         # Create the main layout
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
@@ -65,14 +64,12 @@ class CameraSelectorApp(App):
         self.label = Label(text="Camera Selected: ", size_hint_y=None, height=100)
         layout.add_widget(self.label)
 
-        # Create a list of options
-        # options = get_video_sources()
-        options = []
+        options = get_video_sources()
+        # options = []
 
-        # Create a dropdown menu
         self.dropdown = DropDown()
         for option in options:
-            btn = Button(text=option, size_hint_y=None, height=44)
+            btn = Button(text=option, size_hint_y=None, height=120)
             btn.bind(on_release=lambda btn: self.dropdown.select(btn.text))
             self.dropdown.add_widget(btn)
 
@@ -96,7 +93,7 @@ class CameraSelectorApp(App):
         global selected_variable
         selected_variable = self.label.text.split()[-1]
         print(selected_variable)
-        detect_license_plate(int(selected_variable), resize_width=500, resize_height=None, quality=88)
+        detect_license_plate(int(int(selected_variable) - 1), resize_width=500, resize_height=None, quality=88)
 
     def update_label(self, instance, x):
         self.label.text = "Camera Selected: " + str(x)
@@ -112,17 +109,16 @@ def update_variable(new_value):
     selected_variable = new_value
     messagebox.showinfo("Variable Updated", f"Selected Variable: {selected_variable}")
     print(selected_variable)
-    # detect_license_plate(int(selected_variable), resize_width=500, resize_height=None, quality=88)
+    detect_license_plate(int(selected_variable), resize_width=500, resize_height=None, quality=88)
 
 def get_video_sources():
     sources = []
     for i in range(10):
         cap = cv2.VideoCapture(i)
         if cap.isOpened():
-            sources.append(str(i))
+            sources.append(str(i + 1))
             cap.release()
     return sources
-
 
 def send_to_parkwise_api(license_plate, image_url):
     api_url = os.environ.get("API_URL")
@@ -172,7 +168,11 @@ def send_to_api(image_path):
         'Apikey': api_key,
     }
 
-    response = requests.post(api_url, files=files, data=payload, headers=headers)
+    try:
+        response = requests.post(api_url, files=files, data=payload, headers=headers)
+    except Exception as E:
+        print("Exception is " + e)
+        
 
     if response.status_code == 200:
         if response.text:
@@ -190,11 +190,12 @@ def send_to_api(image_path):
             print("Success, but no content returned.")
     elif response.status_code == 204:
         print("Success, but no content returned.")
+    elif response.status_code == 500:
+        print("Something wrong with API.")
     else:
         print(f"Error: {response.status_code} - {response.text}")
 
-def resize_image(image, width=None, height=None, 
-interpolation=cv2.INTER_AREA):
+def resize_image(image, width=None, height=None, interpolation=cv2.INTER_AREA):
     """
     Resize the input image.
     Parameters:
@@ -249,7 +250,7 @@ based on the given width.
     print(f"Resized image saved to: {output_path}")
 
 
-    send_to_parkwise_api_flag = False  # Rename the variable to avoid naming conflict
+    send_to_parkwise_api_flag = False
     license_plate = ""
 
     if send_to_api(output_path):
