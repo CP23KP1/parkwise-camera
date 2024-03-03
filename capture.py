@@ -1,5 +1,3 @@
-import tkinter as tk
-from tkinter import messagebox
 import cv2
 import time
 import requests
@@ -18,6 +16,8 @@ from kivy.lang import Builder
 from kivy.core.text import LabelBase
 from kivy.animation import Animation
 from kivy.uix.image import Image
+from kivy.uix.textinput import TextInput
+from kivy.uix.gridlayout import GridLayout
 
 Builder.load_string('''
 <Button>:
@@ -54,13 +54,40 @@ load_dotenv()
 
 selected_variable = 2
 
+# create global variable here najaaaa
+api_url_text = ""
+license_api_url_input_text = ""
+api_key_input_text = ""
+device_id_text = ""
+
 class CameraSelectorApp(App):
     def build(self):
         
-        # Create the main layout
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        text_inputs_layout = GridLayout(cols=1, spacing=30, size_hint=(None, None))
+        text_inputs_layout.width = 700
+        text_inputs_layout.height = 300
+        
+        self.api_url = TextInput(size_hint_y=None, height=50)
+        self.api_url.hint_text = "API Url"
+        text_inputs_layout.add_widget(self.api_url)
+        
+        self.api_url_input = TextInput(size_hint_y=None, height=50)
+        self.api_url_input.hint_text = "License Api Url"
+        text_inputs_layout.add_widget(self.api_url_input)
+        
+        self.api_key_input = TextInput(size_hint_y=None, height=50)
+        self.api_key_input.hint_text = "License Api Key Url"
+        text_inputs_layout.add_widget(self.api_key_input)
+        
+        self.device_id = TextInput(size_hint_y=None, height=50)
+        self.device_id.hint_text = "Device ID"
+        text_inputs_layout.add_widget(self.device_id)
+        text_inputs_layout.pos_hint = {'right': 1, 'top': 1}
+        
+        layout.add_widget(text_inputs_layout)
 
-        # Label for displaying selected camera
         self.label = Label(text="Camera Selected: ", size_hint_y=None, height=100)
         layout.add_widget(self.label)
 
@@ -79,11 +106,10 @@ class CameraSelectorApp(App):
         layout.add_widget(mainbutton)
 
         # Button to update the selected camera
-        update_button = Button(text="Update Camera", size_hint_y=None, height=130)
+        update_button = Button(text="Use this Camera", size_hint_y=None, height=130)
         update_button.bind(on_release=self.update_variable)
         layout.add_widget(update_button)
 
-        # Bind the dropdown to update the main button text and label when an option is selected
         self.dropdown.bind(on_select=lambda instance, x: setattr(mainbutton, 'text', x))
         self.dropdown.bind(on_select=self.update_label)
 
@@ -92,10 +118,24 @@ class CameraSelectorApp(App):
     def update_variable(self, instance):
         global selected_variable
         selected_variable = self.label.text.split()[-1]
-        print(selected_variable)
+
         detect_license_plate(int(int(selected_variable) - 1), resize_width=500, resize_height=None, quality=88)
 
     def update_label(self, instance, x):
+        global api_url_text
+        global license_api_url_input_text
+        global api_key_input_text
+        global device_id_text
+        api_url_text = self.api_url.text
+        license_api_url_input_text = self.api_url_input.text
+        api_key_input_text = self.api_key_input.text
+        device_id_text = self.device_id.text
+        
+        print("api url text", api_url_text)
+        print("license_api_url_input_text", license_api_url_input_text)
+        print("api_key_input_text", api_key_input_text)
+        print("device_id_text", device_id_text)
+        
         self.label.text = "Camera Selected: " + str(x)
         anim = Animation(color=(0.5, 0.5, 0.5, 1)) + Animation(color=(1, 1, 1, 1))
         anim.start(self.label)
@@ -109,6 +149,7 @@ def update_variable(new_value):
     selected_variable = new_value
     messagebox.showinfo("Variable Updated", f"Selected Variable: {selected_variable}")
     print(selected_variable)
+    
     detect_license_plate(int(selected_variable), resize_width=500, resize_height=None, quality=88)
 
 def get_video_sources():
@@ -120,20 +161,16 @@ def get_video_sources():
             cap.release()
     return sources
 
+
 def send_to_parkwise_api(license_plate, image_url):
-    api_url = os.environ.get("API_URL")
-    device_id = os.environ.get("DEVICE_ID")
-    
     payload = {
         'licensePlate': license_plate,
         'licensePlateUrl': image_url,
-        'zoneId': 1,
-        'deviceId': device_id
+        'deviceId': device_id_text
     }
-
     headers = {'Content-Type': 'application/json'}
 
-    resp = requests.post(api_url, data=json.dumps(payload), headers=headers)
+    resp = requests.post(api_url_text, data=json.dumps(payload), headers=headers)
 
     print(resp)
 
@@ -159,17 +196,15 @@ def upload_file_to_s3(file_path, file_name):
     return url
 
 def send_to_api(image_path):
-    api_url = os.environ.get("LICENSE_API_URL")
     payload = {'crop': '1', 'rotate': '1'}
     files = {'image': open(image_path, 'rb')}
 
-    api_key = os.environ.get("LICENSE_API_KEY")
     headers = {
-        'Apikey': api_key,
+        'Apikey': api_key_input_text,
     }
 
     try:
-        response = requests.post(api_url, files=files, data=payload, headers=headers)
+        response = requests.post(license_api_url_input_text, files=files, data=payload, headers=headers)
     except Exception as E:
         print("Exception is " + e)
         
